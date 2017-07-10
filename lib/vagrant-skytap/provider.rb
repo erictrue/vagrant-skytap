@@ -26,6 +26,11 @@ require "vagrant"
 module VagrantPlugins
   module Skytap
     class Provider < Vagrant.plugin("2", :provider)
+      # Cache host metadata so we don't make redundant calls for each guest VM.
+      # (This is only relevant if the "host" itself is a Skytap VM.)
+      @@host_metadata = nil
+      @@host_metadata_fetch_failed = false
+
       def initialize(machine)
         @machine = machine
       end
@@ -61,6 +66,13 @@ module VagrantPlugins
 
         # Return the MachineState object
         Vagrant::MachineState.new(state_id, short, long)
+      end
+
+      def host_metadata
+        return nil if @@host_metadata_fetch_failed
+        @@host_metadata ||= capability(:host_metadata).tap do |metadata|
+          @@host_metadata_fetch_failed = metadata.nil?
+        end
       end
 
       def to_s
